@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myapplication.R;
 import com.example.myapplication.activities.RecipeView;
+import com.example.myapplication.activities.RecipeViewWithImage;
 import com.example.myapplication.model.Recipe;
 
 import org.w3c.dom.Text;
@@ -66,21 +67,30 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
                 @Override
                 public void onClick(View v)
                 {
-                    //Sending recipe's information the the RecipeView activity to show the recipe's details (using intent)
-                    Intent intent = new Intent(v.getContext(), RecipeView.class);
-                    intent.putExtra("nameKey", recipesArray.get(getAdapterPosition()).getRecipeName());
-                    intent.putExtra("descriptionKey", recipesArray.get(getAdapterPosition()).getDescription());
-                    intent.putExtra("stepsKey", recipesArray.get(getAdapterPosition()).getSteps());
-                    intent.putExtra("categoryKey", recipesArray.get(getAdapterPosition()).getCategory());
+                    if((recipesArray.get(getAdapterPosition()).getSteps())!=null) {
+                        //Sending recipe's information the the RecipeView activity to show the recipe's details (using intent)
+                        Intent intent = new Intent(v.getContext(), RecipeView.class);
+                        intent.putExtra("nameKey", recipesArray.get(getAdapterPosition()).getRecipeName());
+                        intent.putExtra("descriptionKey", recipesArray.get(getAdapterPosition()).getDescription());
+                        intent.putExtra("stepsKey", recipesArray.get(getAdapterPosition()).getSteps());
+                        intent.putExtra("categoryKey", recipesArray.get(getAdapterPosition()).getCategory());
 
-                    String ingredients = "";
-                    for (String iterate : recipesArray.get(getAdapterPosition()).getIngredients())
-                    {
-                        ingredients += iterate + "\n";
+                        String ingredients = "";
+                        for (String iterate : recipesArray.get(getAdapterPosition()).getIngredients()) {
+                            ingredients += iterate + "\n";
+                        }
+                        intent.putExtra("ingredientsKey", ingredients);
+                        v.getContext().startActivity(intent);
+                    }
+                    else {
+                        Intent intent = new Intent(v.getContext(), RecipeViewWithImage.class);
+                        intent.putExtra("nameKey", recipesArray.get(getAdapterPosition()).getRecipeName());
+                        intent.putExtra("descriptionKey", recipesArray.get(getAdapterPosition()).getDescription());
+                        intent.putExtra("imageUrlKey", recipesArray.get(getAdapterPosition()).getUpload().getImageUrl());
+                        intent.putExtra("categoryKey", recipesArray.get(getAdapterPosition()).getCategory());
+                        v.getContext().startActivity(intent);
                     }
 
-                    intent.putExtra("ingredientsKey", ingredients);
-                    v.getContext().startActivity(intent);
                 }
             });
 

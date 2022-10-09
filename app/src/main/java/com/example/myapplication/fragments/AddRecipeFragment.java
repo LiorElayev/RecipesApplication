@@ -4,12 +4,14 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
 import android.preference.PreferenceManager;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,11 +24,20 @@ import android.widget.Toast;
 
 import com.example.myapplication.R;
 import com.example.myapplication.model.Recipe;
+import com.example.myapplication.model.Upload;
+import com.google.android.gms.safetynet.VerifyAppsConstants;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -35,6 +46,8 @@ import java.util.ArrayList;
  */
 public class AddRecipeFragment extends Fragment
 {
+    private static final int RESULT_OK = -1;
+
     private FirebaseFirestore db;
     private FirebaseAuth mAuth;
     private EditText recipeName, ingredients, steps, description;
@@ -45,7 +58,9 @@ public class AddRecipeFragment extends Fragment
     private RadioButton beef_btn, dairy_btn, fish_btn, vegan_btn, cocktails_btn, desserts_btn;
     private String chosenCategory;
     private String chosenUploadMethod;
-    private static final int RESULT_OK = -1;
+    private Upload upload;
+    private String imageUrl;
+    private String imageName;
 
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -89,12 +104,25 @@ public class AddRecipeFragment extends Fragment
     }
 
     @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK) {
+            if (requestCode==VerifyAppsConstants.HARMFUL_CATEGORY_BACKDOOR){
+                imageUrl=data.getStringExtra("url");
+                imageName=data.getStringExtra("name");
+            }
+        }
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         View view =  inflater.inflate(R.layout.fragment_add_recipe, container, false);
         db = FirebaseFirestore.getInstance();
         mAuth = FirebaseAuth.getInstance();
+        FirebaseUser user = mAuth.getCurrentUser();
+        String uid = user.getUid();
 
         recipeName = view.findViewById(R.id.recipeNameText);
         description = view.findViewById(R.id.descriptionText);
@@ -102,7 +130,6 @@ public class AddRecipeFragment extends Fragment
         ingredients.setEnabled(false);
         steps = view.findViewById(R.id.stepsText);
         steps.setEnabled(false);
-
         uploadRadioGroup = view.findViewById(R.id.uploadRadioGroup);
         manually_radio_btn = view.findViewById(R.id.manually_radio_button);
         upload_radio_btn = view.findViewById(R.id.upload_radio_button);
@@ -186,10 +213,16 @@ public class AddRecipeFragment extends Fragment
         importButton.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view){
+            FragmentTransaction transaction = getFragmentManager().beginTransaction();
             Fragment fragment = new UploadImageFragment();
-                replaceFragment(fragment);
+            fragment.setTargetFragment(AddRecipeFragment.this, VerifyAppsConstants.HARMFUL_CATEGORY_BACKDOOR);
+            transaction.addToBackStack(fragment.getClass().getName());
+            transaction.replace(R.id.fragment_container, fragment);
+            transaction.commit();
             }
         });
+
+
 
         //click listener for the add recipe button
         Button addButton = view.findViewById(R.id.addButton);
@@ -197,14 +230,15 @@ public class AddRecipeFragment extends Fragment
             @Override
             public void onClick(View v)
             {
-                FirebaseUser user = mAuth.getCurrentUser();
-                String uid = user.getUid();
                 String ingredientsStr = ingredients.getText().toString();
                 ArrayList<String> ingredients = splitIngredients(ingredientsStr);
 
                 String recipeNameStr = recipeName.getText().toString();
                 String descriptionStr = description.getText().toString();
                 String stepsStr = steps.getText().toString();
+                Upload upload = new Upload();
+                upload.setName(imageName);
+                upload.setImageUrl(imageUrl);
 
                 //check if the fields are properly filled
                 if (!recipeNameStr.equals("") && !descriptionStr.equals("") && !stepsStr.equals("") && !ingredientsStr.equals("") && chosenCategory != null && chosenUploadMethod=="manually")
@@ -216,7 +250,7 @@ public class AddRecipeFragment extends Fragment
                 }
                 else if (!recipeNameStr.equals("") && !descriptionStr.equals("") && chosenCategory != null && chosenUploadMethod=="upload") {
                     //create new recipe's object with image and store it in the user's data-base
-                    Recipe recipe = new Recipe(recipeNameStr, descriptionStr, ingredients, stepsStr, chosenCategory);
+                    Recipe recipe = new Recipe(recipeNameStr, descriptionStr, chosenCategory, upload);
                     db.collection("Users").document(uid).collection(chosenCategory).document(recipe.getRecipeName()).set(recipe);
                     Toast.makeText(getActivity(), "Recipe added successfully!", Toast.LENGTH_SHORT).show();
                 }
@@ -244,10 +278,4 @@ public class AddRecipeFragment extends Fragment
         return splitIngredients;
     }
 
-    public void replaceFragment(Fragment someFragment) {
-        FragmentTransaction transaction = getFragmentManager().beginTransaction();
-        transaction.replace(R.id.fragment_container, someFragment);
-        transaction.addToBackStack(null);
-        transaction.commit();
-    }
 }

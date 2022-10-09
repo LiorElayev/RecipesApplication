@@ -143,7 +143,7 @@ public class SearchFragment extends Fragment
                                 {
                                     ArrayList<String> ingredientsFromRecipe = entry.getValue();
                                     //retainAll is intersection, return true\false if there is at least 1 common ingredient
-                                    if (ingredientsFromRecipe.retainAll(splitIngredientsSearch))
+                                    if (!ingredientsFromRecipe.retainAll(splitIngredientsSearch))
                                     {
                                         //if we get a match, we will display the recipe, and set flag to "True"
                                         if (!ingredientsFromRecipe.isEmpty())

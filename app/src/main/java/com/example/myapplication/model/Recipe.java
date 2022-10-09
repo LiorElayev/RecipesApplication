@@ -2,6 +2,8 @@ package com.example.myapplication.model;
 
 import java.util.ArrayList;
 
+import javax.annotation.Nullable;
+
 public class Recipe
 {
     private String recipeName;
@@ -9,6 +11,7 @@ public class Recipe
     private ArrayList<String> ingredients;
     private String steps;
     private String category;
+    private Upload upload;
 
     public Recipe() {}
 
@@ -21,9 +24,16 @@ public class Recipe
         this.category = category;
     }
 
-    public String getRecipeName() {
-        return recipeName;
+    public Recipe(String recipeName, String description, String category, Upload upload)
+    {
+        this.recipeName = recipeName;
+        this.description = description;
+        this.category = category;
+        this.upload = upload;
     }
+
+
+    public String getRecipeName() { return recipeName; }
 
     public String getDescription() {
         return description;
@@ -40,6 +50,8 @@ public class Recipe
     public String getCategory() {
         return category;
     }
+
+    public Upload getUpload() { return upload; }
 
     public void setRecipeName(String recipeName) {
         this.recipeName = recipeName;
@@ -59,5 +71,9 @@ public class Recipe
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public void setUpload(Upload upload) {
+        this.upload = upload;
     }
 }

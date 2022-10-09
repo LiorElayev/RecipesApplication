@@ -35,6 +35,7 @@ import com.google.firebase.storage.OnProgressListener;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.StorageTask;
 import com.google.firebase.storage.UploadTask;
+import com.squareup.picasso.Picasso;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -46,16 +47,17 @@ public class UploadImageFragment extends Fragment {
     private static final int PICK_IMAGE_REQUEST = 1;
     private static final int RESULT_OK = -1;
 
+    private FirebaseFirestore db;
+    private FirebaseAuth mAuth;
     private Button mButtonChooseImage;
     private Button mButtonUpload;
-    private TextView mTextViewShowUploads;
     private EditText mEditTextFileName;
     private ImageView mImageView;
     private ProgressBar mProgressBar;
     private Uri mImageUri;
 
     private StorageReference mStorageRef;
-    private DatabaseReference mDatabaseRef;
+   // private DatabaseReference mDatabaseRef;
 
     private StorageTask mUploadTask;
 
@@ -105,14 +107,16 @@ public class UploadImageFragment extends Fragment {
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_upload_image, container, false);
+        db = FirebaseFirestore.getInstance();
+        mAuth = FirebaseAuth.getInstance();
+
         mButtonChooseImage = view.findViewById(R.id.button_choose_image);
         mButtonUpload = view.findViewById(R.id.button_upload);
-        mTextViewShowUploads = view.findViewById(R.id.text_view_show_uploads);
         mEditTextFileName = view.findViewById(R.id.edit_text_file_name);
         mImageView = view.findViewById(R.id.image_view);
         mProgressBar = view.findViewById(R.id.progress_bar);
         mStorageRef = FirebaseStorage.getInstance().getReference("uploads");
-        mDatabaseRef = FirebaseDatabase.getInstance().getReference("uploads");
+       // mDatabaseRef = FirebaseDatabase.getInstance().getReference("uploads");
 
         mButtonChooseImage.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -129,13 +133,6 @@ public class UploadImageFragment extends Fragment {
                 } else {
                     uploadFile();
                 }
-            }
-        });
-
-        mTextViewShowUploads.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
             }
         });
         return view;
@@ -156,7 +153,7 @@ public class UploadImageFragment extends Fragment {
         if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK
                 && data != null && data.getData() != null) {
             mImageUri = data.getData();
-            mImageView.setImageURI(mImageUri);
+            Picasso.with(this.getActivity()).load(mImageUri).into(mImageView);
         }
     }
 
@@ -170,6 +167,8 @@ public class UploadImageFragment extends Fragment {
         if (mImageUri != null) {
             StorageReference fileReference = mStorageRef.child(System.currentTimeMillis()
                     + "." + getFileExtension(mImageUri));
+            FirebaseUser user = mAuth.getCurrentUser();
+            String uid = user.getUid();
 
             mUploadTask = fileReference.putFile(mImageUri)
                     .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
@@ -184,10 +183,20 @@ public class UploadImageFragment extends Fragment {
                             }, 500);
 
                             Toast.makeText(getActivity() , "Upload successful", Toast.LENGTH_LONG).show();
-                            Upload upload = new Upload(mEditTextFileName.getText().toString().trim(),
-                                    taskSnapshot.getUploadSessionUri().toString());
-                            String uploadId = mDatabaseRef.push().getKey();
-                            mDatabaseRef.child(uploadId).setValue(upload);
+
+                            fileReference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                                @Override
+                                public void onSuccess(Uri uri) {
+                                    String url = uri.toString();
+                                    Upload upload = new Upload(mEditTextFileName.getText().toString().trim(), url);
+                                    Intent intent = new Intent(getActivity(), UploadImageFragment.class);
+                                    intent.putExtra("url", upload.getImageUrl());
+                                    intent.putExtra("name", upload.getName());
+                                    getTargetFragment().onActivityResult(getTargetRequestCode(), RESULT_OK, intent);
+                                    getFragmentManager().popBackStack();
+                                }
+                            });
+
                         }
                     })
                     .addOnFailureListener(new OnFailureListener() {
